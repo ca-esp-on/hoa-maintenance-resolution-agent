@@ -1,146 +1,164 @@
 # HOA Maintenance Resolution Agent
 
-A stateful, code-heavy LangGraph project that demonstrates **agentic control flow** rather than a one-shot LLM call.
+A stateful AI agent built with **LangGraph, LangChain, OpenAI, and Streamlit** that helps HOA residents report and resolve maintenance issues.
 
-The agent receives an HOA maintenance request, decides what information or tool it needs next, updates shared case state, handles tool failures, and pauses for human approval before write/high-impact actions.
+Unlike a one-shot LLM call, the agent decides what to do next, calls tools, maintains state, handles tool failures, and pauses for human approval when required.
 
-## Why this is agentic
-
-The workflow is iterative:
-
-`plan -> act/tool -> observe -> update state -> plan again`
-
-The LLM does not produce the final answer in one call. It chooses the next action from the current state. Deterministic graph logic enforces boundaries around write actions and failure handling.
-
-## Architecture
+## How It Works
 
 ```text
-Resident request
-      |
-      v
-  initialize
-      |
-      v
-   planner  <-----------------------------+
-      |                                   |
-      +--> lookup_policy -----------------+
-      +--> check_history -----------------+
-      +--> check_vendor ------------------+
-      |         |                         |
-      |         +-- tool error -> state --+
-      +--> ask_human -- interrupt --------+
-      |
-      +--> create_ticket --> approval interrupt --> execute_write --> END
-      |
-      +--> escalate -----> approval interrupt --> execute_write --> END
-      |
-      +--> resolve -----------------------------------------------> END
+Resident Request
+      ↓
+LLM Planner
+"What should I do next?"
+      ↓
+ ┌────────┬─────────┬────────┐
+ Policy   History   Vendor
+ Lookup   Lookup    Lookup
+ └────────┴─────────┴────────┘
+      ↓
+Update State
+      ↓
+Planner Decides Again
+      ↓
+Resolve / Create Ticket / Escalate
+                    ↓
+              Human Approval
+                    ↓
+               Final Action
 ```
+
+The exact path is dynamic. After each tool call, the result is stored in LangGraph state and the planner decides the next action.
 
 ## Tools
 
-### Read tools
-- `lookup_hoa_policy`
-- `get_maintenance_history`
-- `check_vendor_availability`
+**Read**
 
-### Write tools
-- `create_maintenance_ticket`
-- `escalate_to_hoa_manager`
+* `lookup_hoa_policy`
+* `get_maintenance_history`
+* `check_vendor_availability`
 
-Write tools are never executed until the graph pauses and a human approves the action.
+**Write**
+
+* `create_maintenance_ticket`
+* `escalate_to_hoa_manager`
+
+Write actions require human approval.
 
 ## State
 
-The graph tracks:
-- resident request and unit/common area
-- issue classification and severity
-- HOA responsibility assessment
-- policy, maintenance history, and vendor observations
-- selected next action and rationale
-- tool retry count
-- actions already taken
-- human approval
-- final case status
+The agent tracks information such as:
 
-## Failure recovery
+* Issue type and severity
+* HOA responsibility
+* Policy and maintenance history
+* Vendor availability
+* Actions already attempted
+* Retry count
+* Human approval
+* Case status
 
-The vendor tool can intentionally simulate an outage. Failed attempts are written into state and the planner sees the retry count. After repeated failures, the prompt instructs the planner to escalate instead of inventing vendor availability.
+## Human-in-the-Loop
 
-## Human-in-the-loop
+LangGraph `interrupt()` pauses the workflow before write/escalation actions.
 
-LangGraph `interrupt()` pauses execution for:
-1. missing resident information
-2. approval before creating a maintenance ticket
-3. approval before escalation/write actions
+```text
+Agent recommends action
+        ↓
+Human Approval
+   /          \
+Approve      Reject
+   ↓            ↓
+Execute        Stop
+```
 
-The graph uses `InMemorySaver` with a `thread_id` so execution can resume from the saved state.
+The agent can also ask the resident for missing information before continuing.
 
-## Demo scenarios
+## Failure Recovery
 
-### 1. Routine issue
-"The hallway light outside my unit has been out for two days."
+Vendor failure is simulated to demonstrate error handling.
 
-Expected path: classify -> policy/history/vendor reads -> propose ticket -> human approval -> ticket created.
+```text
+Vendor API
+   ↓
+❌ Failure
+   ↓
+retry_count = 1
+   ↓
+Retry
+   ↓
+❌ Failure
+   ↓
+retry_count = 2
+   ↓
+Escalate
+   ↓
+Human Approval
+```
 
-### 2. Emergency
-"Water is pouring from the hallway ceiling outside my unit."
+The failure is stored in state instead of crashing the workflow.
 
-Expected path: classify as emergency -> gather enough context -> propose escalation -> human approval -> escalated.
+## Demo Scenarios
 
-### 3. Tool failure
-"The shared garage door is stuck and will not open."
+### Routine Hallway Light
 
-Enable simulated vendor failure. Expected path: vendor lookup fails -> retry based on state -> eventually recover or escalate based on the planner decision.
+> "The hallway light outside my unit has been out for two days."
 
-## Setup
+Demonstrates classification, policy/history lookup, and ticket approval.
 
-Python 3.12+ recommended.
+### Emergency Water Leak
+
+> "Water is pouring from the hallway ceiling outside my unit."
+
+The agent identifies an emergency and prioritizes escalation.
+
+### Garage Vendor Failure
+
+> "The shared garage door is stuck and will not open."
+
+Demonstrates vendor tool failure, retries, and escalation.
+
+## Project Structure
+
+```text
+├── app.py
+├── graph.py
+├── planner.py
+├── state.py
+├── tools.py
+├── data/
+│   ├── hoa_policies.json
+│   ├── maintenance_history.json
+│   └── vendors.json
+├── requirements.txt
+├── .env.example
+└── README.md
+```
+
+## Run
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Add your OpenAI API key to `.env`.
-
-Run the UI:
+Add your API key to `.env`, then:
 
 ```bash
 streamlit run app.py
 ```
 
-Or run a CLI scenario:
+## Key Concepts Demonstrated
 
-```bash
-python demo_cli.py routine
-python demo_cli.py emergency
-python demo_cli.py failure
-```
+* Stateful LangGraph workflow
+* LLM next-action planning
+* Structured LLM output
+* Tool calling
+* Conditional routing
+* Error recovery and retries
+* Human-in-the-loop
+* Explicit autonomy boundaries
 
-Run tests:
+## Scope
 
-```bash
-pytest -q
-```
-
-## One-liner
-
-My agent helps HOA residents resolve maintenance issues through a web app, replacing manual back-and-forth with property managers. It autonomously classifies issues, assesses urgency, checks HOA responsibility and maintenance history, and decides the next action using five tools; it hands off write actions, emergencies, and ambiguous cases to a human, and succeeds when common requests are correctly resolved or escalated in under two minutes.
-
-## Cohort concepts demonstrated
-
-- stateful LangGraph workflow
-- LLM-driven next-action planning
-- tool calling
-- conditional routing
-- retry/error recovery
-- human-in-the-loop interrupts
-- explicit autonomy boundaries
-- end-to-end task completion
-
-## Scope note
-
-This is an educational MVP. HOA policies, maintenance history, and vendors are mock data. A production implementation would use authenticated property-management APIs, persistent checkpointing, audit logs, role-based approvals, and property-specific governing documents.
+This is an educational MVP using mock HOA policies, maintenance history, and vendor data. A production version would integrate real property-management systems, persistent storage, authentication, audit logs, and deterministic safety rules for emergency conditions.
