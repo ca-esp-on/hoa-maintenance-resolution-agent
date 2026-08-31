@@ -28,7 +28,7 @@ class AgentDecision(BaseModel):
     missing_information: list[str] = Field(default_factory=list)
 
 
-SYSTEM_PROMPT = SYSTEM_PROMPT = """
+SYSTEM_PROMPT = """
 You are the planner for an HOA Maintenance Resolution Agent.
 
 Your job is to choose the NEXT useful action based on the current case state.
