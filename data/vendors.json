@@ -1,0 +1,51 @@
+{
+  "plumbing": [
+    {
+      "name": "Evergreen Plumbing",
+      "availability": "within 2 hours",
+      "priority": "emergency-capable"
+    }
+  ],
+  "electrical": [
+    {
+      "name": "Northside Electrical",
+      "availability": "today",
+      "priority": "standard"
+    }
+  ],
+  "garage": [
+    {
+      "name": "Access Door Services",
+      "availability": "today",
+      "priority": "standard"
+    }
+  ],
+  "elevator": [
+    {
+      "name": "Metro Elevator Service",
+      "availability": "on-call",
+      "priority": "emergency-capable"
+    }
+  ],
+  "landscaping": [
+    {
+      "name": "Greenway Grounds",
+      "availability": "next business day",
+      "priority": "standard"
+    }
+  ],
+  "hvac": [
+    {
+      "name": "Comfort Systems",
+      "availability": "today",
+      "priority": "standard"
+    }
+  ],
+  "other": [
+    {
+      "name": "General Maintenance Desk",
+      "availability": "next business day",
+      "priority": "triage"
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "plumbing": {
+    "responsibility": "Shared/unclear until location of failure is confirmed",
+    "guidance": "Common-area or shared-stack plumbing is typically routed to HOA maintenance; fixtures inside a unit may be homeowner responsibility.",
+    "approval_rule": "Emergency escalation and vendor dispatch require manager approval."
+  },
+  "electrical": {
+    "responsibility": "HOA for common-area fixtures; homeowner for most in-unit fixtures",
+    "guidance": "Common hallway/garage lighting can be routed as HOA maintenance. Electrical hazards require escalation.",
+    "approval_rule": "Ticket creation requires approval."
+  },
+  "garage": {
+    "responsibility": "HOA/common area",
+    "guidance": "Shared garage doors and access mechanisms are HOA-maintained common assets.",
+    "approval_rule": "Vendor dispatch or ticket creation requires approval."
+  },
+  "elevator": {
+    "responsibility": "HOA/common area",
+    "guidance": "Elevator outages are HOA responsibility; trapped occupants or safety issues require emergency escalation.",
+    "approval_rule": "Emergency escalation requires approval."
+  },
+  "landscaping": {
+    "responsibility": "HOA/common area",
+    "guidance": "Common landscaping issues can be routed to the HOA landscape vendor.",
+    "approval_rule": "Ticket creation requires approval."
+  },
+  "hvac": {
+    "responsibility": "Depends on whether equipment is unit-owned or common",
+    "guidance": "Check building-specific ownership before dispatch.",
+    "approval_rule": "Ambiguous responsibility should be reviewed by a manager."
+  },
+  "other": {
+    "responsibility": "Unknown",
+    "guidance": "Gather more information and escalate if responsibility or safety cannot be determined.",
+    "approval_rule": "Write actions require human approval."
+  }
+}
