@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from typing import Literal
 from uuid import uuid4
 
@@ -17,6 +18,15 @@ from tools import (
     lookup_hoa_policy,
 )
 
+DEBUG_MODE = os.getenv("HOA_DEBUG", "false").lower() in {"1", "true", "yes", "on"}
+
+
+def debug_log(stage: str, state: HOAState) -> None:
+    if not DEBUG_MODE:
+        return
+    print(f"\n=== {stage} ===")
+    print(state)
+
 
 def initialize_node(state: HOAState) -> HOAState:
     return {
@@ -32,8 +42,9 @@ def initialize_node(state: HOAState) -> HOAState:
 
 
 def planner_node(state: HOAState) -> HOAState:
+    debug_log("planner input", state)
     decision = decide_next_action(state)
-    return {
+    result = {
         "issue_type": decision.issue_type,
         "severity": decision.severity,
         "hoa_responsibility": decision.hoa_responsibility,
@@ -41,6 +52,8 @@ def planner_node(state: HOAState) -> HOAState:
         "rationale": decision.rationale,
         "missing_information": decision.missing_information,
     }
+    debug_log(f"planner decision -> {decision.next_action}", result)
+    return result
 
 
 def route_after_planner(state: HOAState) -> str:
@@ -107,6 +120,7 @@ def ask_human_node(state: HOAState):
 
 def approval_node(state: HOAState) -> Command[Literal["execute_write", "rejected"]]:
     proposed = state["next_action"]
+    debug_log("approval requested", {**state, "proposed_action": proposed})
     decision = interrupt({
         "type": "approval",
         "question": f"Approve proposed write action: {proposed}?",
@@ -117,7 +131,7 @@ def approval_node(state: HOAState) -> Command[Literal["execute_write", "rejected
         "vendor_result": state.get("vendor_result"),
     })
     approved = bool(decision)
-    return Command(
+    result = Command(
         update={
             "approval_required": True,
             "human_approval": approved,
@@ -127,9 +141,12 @@ def approval_node(state: HOAState) -> Command[Literal["execute_write", "rejected
         },
         goto="execute_write" if approved else "rejected",
     )
+    debug_log(f"approval result -> {'execute_write' if approved else 'rejected'}", {**state, "approved": approved})
+    return result
 
 
 def execute_write_node(state: HOAState) -> HOAState:
+    debug_log("execute_write input", state)
     if state["next_action"] == "create_ticket":
         result = create_maintenance_ticket.invoke({
             "case_id": state["case_id"],
@@ -137,21 +154,25 @@ def execute_write_node(state: HOAState) -> HOAState:
             "severity": state.get("severity", "unknown"),
             "summary": state["resident_message"],
         })
-        return {
+        final_state = {
             "status": "resolved",
             "final_message": result,
             "actions_taken": state.get("actions_taken", []) + ["create_ticket"],
         }
+        debug_log("execute_write result", {**state, **final_state})
+        return final_state
 
     result = escalate_to_hoa_manager.invoke({
         "case_id": state["case_id"],
         "reason": state.get("rationale", "Human escalation required."),
     })
-    return {
+    final_state = {
         "status": "escalated",
         "final_message": result,
         "actions_taken": state.get("actions_taken", []) + ["escalate"],
     }
+    debug_log("execute_write result", {**state, **final_state})
+    return final_state
 
 
 def rejected_node(state: HOAState) -> HOAState:

@@ -1,6 +1,5 @@
 from typing import Literal, Optional, TypedDict
 
-
 IssueType = Literal[
     "plumbing",
     "electrical",
